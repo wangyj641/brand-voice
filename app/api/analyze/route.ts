@@ -2,11 +2,13 @@
 import { NextResponse } from "next/server";
 import axios from "axios";
 
+import fs from 'fs/promises';
+import path from 'path';
+
+
 import OpenAI from "openai";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+
 
 async function analyzeWithOpenAI(text: string) {
   try {
@@ -43,7 +45,11 @@ Return the result in strict JSON format:
         "score": number,
         "issues": string[],
     },
-  "improvedText": string
+    "originalText": string,
+  "improvedText": string,
+   "spanishText": string,
+    "chineseText": string
+
 }
 
 Text to analyze:
@@ -76,9 +82,21 @@ Text to analyze:
     );
 
     const raw = response.data.choices[0].message?.content?.trim() || "{}";
+
+    let cleaned = raw;
+
+   // 去掉 markdown 代码块符号
+cleaned = cleaned.replace(/^```json\s*/i, "").replace(/^```/, ""); // 去掉开头
+cleaned = cleaned.replace(/```$/i, ""); // 去掉结尾
+
+
+
     console.log("---------- 3 ------------");
-    console.log(raw);
-    return raw;
+    const result = JSON.parse(cleaned);
+    console.log("---------- 4 ------------", result.tone.formality);
+
+    //console.log(raw);
+    return result;
   } catch (error: any) {
     console.error("Error calling OpenAI:", error);
     return NextResponse.json(
@@ -156,21 +174,28 @@ export async function POST(req: Request) {
 
     if (!text) {
       return NextResponse.json({ error: "Missing text" }, { status: 400 });
-    }
+    } 
+    
+    // 1. 获取文件路径
+    const filePath = path.join(process.cwd(), 'data', 'tim.txt');
 
+    // 2. 读取文件内容
+    const content = await fs.readFile(filePath, 'utf-8');
+
+    //console.log("------------------- Read content from file:", content);
     //console.log("------------------- Received text for analysis:", text);
 
     let result;
     if (provider === "openai") {
-      result = await analyzeWithOpenAI(text);
+      result = await analyzeWithOpenAI(content);
     } else {
-      result = await analyzeWithHuggingFace(text);
+      result = await analyzeWithHuggingFace(content);
     }
 
     console.log("------------------- Analysis result:", result);
 
-    //return NextResponse.json(result);
-    return NextResponse.json({ data: result }, { status: 200 });
+   
+     return NextResponse.json({ data: result }, { status: 200 });
   } catch (err: any) {
     console.error("Analysis error:", err);
     return NextResponse.json(

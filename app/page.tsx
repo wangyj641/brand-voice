@@ -58,7 +58,9 @@ import {
   Tooltip,
 } from "recharts";
 
-const SAMPLE_TEXT = `We are thrilled to announce our latest product update! Our team worked incredibly hard and we're super excited to share it with you. Thanks to all our supporters.`;
+//const SAMPLE_TEXT = `We are thrilled to announce our latest product update! Our team worked incredibly hard and we're super excited to share it with you. Thanks to all our supporters.`;
+
+const SAMPLE_TEXT = `https://www.timhortons.ca/tims-for-good`;
 
 const COLORS = ["#3B82F6", "#60A5FA", "#93C5FD"];
 
@@ -67,6 +69,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState<string | null>(null);
+  const [formality, setFormality] = useState(0);
 
   async function callAnalyzeAPI(inputText: string) {
     //const provider = "huggingface"; // or "openai", could be made selectable
@@ -87,12 +90,16 @@ export default function Dashboard() {
         }),
       });
 
-      // 解析 JSON
+
       const json = await resp.json();
-      // 取出 result
-      const data = json.data;
-      //console.log(data);
-      console.log("------------- API response:", data);
+      const data = json.data; // ✅ 现在一定是对象，不是字符串
+
+      console.log("API response data:", data);
+
+      console.log("Improved Text:", data?.chineseText);
+//console.log("Formality:", data?.tone?.formality);
+
+
       return data;
     } catch (e) {
       // Fallback: return mocked analysis so the UI still works without backend
@@ -112,7 +119,13 @@ export default function Dashboard() {
     }
     setError(null);
     const data = await callAnalyzeAPI(trimmed);
+    //console.log("------------- Final analysis result:", data);
+    //console.log("------------- Formality score:", data.readability);
+    //console.log(data.readability);
     setResult(data);
+    //setFormality(data.tone.formality);
+    //console.log("------------- Result set in state:", formality);
+
   }
 
   function mockAnalysis(inputText: string) {
@@ -295,11 +308,11 @@ export default function Dashboard() {
                     <div className="text-2xl font-semibold">
                       {result
                         ? `${Math.round(
-                            (((result.tone.formality || 0) +
-                              (result.tone.positivity || 0) +
-                              (result.tone.confidence || 0)) /
-                              3) *
-                              100
+                            (((result?.tone?.formality || 0) +
+                              (result?.tone?.positivity || 0) +
+                              (result?.tone?.confidence || 0)) /
+                              3) 
+              
                           )}`
                         : "--"}
                     </div>
@@ -317,7 +330,7 @@ export default function Dashboard() {
                 <div className="mt-4">
                   <div className="text-3xl font-semibold">
                     {result
-                      ? `${Math.round((result.inclusivity.score || 0) * 100)}`
+                      ? `${Math.round((result?.inclusivity?.score || 0))}`
                       : "--"}
                   </div>
                   <div className="mt-2 text-sm text-slate-500">
@@ -329,7 +342,7 @@ export default function Dashboard() {
                         style={{
                           width: result
                             ? `${Math.round(
-                                (result.inclusivity.score || 0) * 100
+                                (result?.inclusivity?.score || 0) 
                               )}%`
                             : "0%",
                         }}
@@ -338,9 +351,9 @@ export default function Dashboard() {
                     </div>
                     <div className="mt-3 text-sm text-slate-500">
                       {result &&
-                      result.inclusivity.issues &&
-                      result.inclusivity.issues.length > 0
-                        ? `${result.inclusivity.issues.length} issue(s) found`
+                      result.inclusivity?.issues &&
+                      result.inclusivity?.issues?.length > 0
+                        ? `${result?.inclusivity?.issues?.length} issue(s) found`
                         : "No major issues found"}
                     </div>
                   </div>
@@ -377,16 +390,15 @@ export default function Dashboard() {
                 <h3 className="text-lg font-medium">Original Text</h3>
                 <div className="mt-3 p-3 rounded-lg border border-slate-100 bg-slate-50">
                   <pre className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {text}
+                    {result?.originalText }
                   </pre>
                 </div>
 
                 <div className="mt-4">
                   <h4 className="text-sm font-medium">Detected issues</h4>
                   <div className="mt-2 text-sm text-slate-600">
-                    {result &&
-                    result.inclusivity.issues &&
-                    result.inclusivity.issues.length > 0 ? (
+                    {
+                    result?.inclusivity?.issues?.length > 0 ? (
                       <ul className="list-disc pl-5">
                         {result.inclusivity.issues.map((it, idx) => (
                           <li key={idx}>
@@ -409,7 +421,7 @@ export default function Dashboard() {
                 <div className="mt-3">
                   <textarea
                     readOnly
-                    value={result ? result.improved_text : ""}
+                    value={result ? result.improvedText : ""}
                     rows={8}
                     className="w-full rounded-lg border border-slate-200 p-3 bg-slate-50"
                   />
@@ -418,7 +430,7 @@ export default function Dashboard() {
                   <button
                     onClick={() =>
                       navigator.clipboard.writeText(
-                        result ? result.improved_text : ""
+                        result ? result.improvedText : ""
                       )
                     }
                     className="px-3 py-2 rounded-lg border bg-white"
@@ -456,18 +468,18 @@ export default function Dashboard() {
                         ? [
                             {
                               subject: "Formality",
-                              A: Math.round((result.tone.formality || 0) * 100),
+                              A: Math.round((result?.tone?.formality || 0) * 100),
                             },
                             {
                               subject: "Positivity",
                               A: Math.round(
-                                (result.tone.positivity || 0) * 100
+                                (result?.tone?.positivity || 0) * 100
                               ),
                             },
                             {
                               subject: "Confidence",
                               A: Math.round(
-                                (result.tone.confidence || 0) * 100
+                                (result?.tone?.confidence || 0) * 100
                               ),
                             },
                           ]
