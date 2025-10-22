@@ -68,8 +68,9 @@ export default function Dashboard() {
   const [text, setText] = useState(SAMPLE_TEXT);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [translate, setTranslate] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formality, setFormality] = useState(0);
+  
 
   async function callAnalyzeAPI(inputText: string) {
     //const provider = "huggingface"; // or "openai", could be made selectable
@@ -82,6 +83,7 @@ export default function Dashboard() {
       const resp = await fetch("/api/analyze", {
         method: "POST",
         headers: {
+
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -421,12 +423,20 @@ export default function Dashboard() {
                 <div className="mt-3">
                   <textarea
                     readOnly
-                    value={result ? result.improvedText : ""}
+                    value = {translate ? result?.chineseText : result?.improvedText}
                     rows={8}
                     className="w-full rounded-lg border border-slate-200 p-3 bg-slate-50"
                   />
                 </div>
                 <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => {setTranslate(!translate);}}
+                    
+                    className="px-3 py-2 rounded-lg border bg-white"
+                  >
+                    Chinese
+                  </button>
+
                   <button
                     onClick={() =>
                       navigator.clipboard.writeText(
