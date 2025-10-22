@@ -2,32 +2,15 @@
 import { NextResponse } from "next/server";
 import axios from "axios";
 
-/**
- * Real OpenAI-powered Brand Voice Analyzer API
- * Uses GPT model to analyze text tone, inclusivity, and readability.
- *
- * Requirements:
- * 1️⃣  install openai SDK:  npm install openai
- * 2️⃣  add your key in .env.local:
- *      OPENAI_API_KEY=sk-xxxxxx
- */
-
 import OpenAI from "openai";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
-export async function POST(req: Request) {
+async function analyzeWithOpenAI(text: string) {
   try {
-    const { text } = await req.json();
-
-    if (!text || text.trim().length === 0) {
-      return NextResponse.json(
-        { message: "Text input required" },
-        { status: 400 }
-      );
-    }
+    //const { text } = await req.json();
 
     // 🧠 Step 1. 让 GPT 分析语气、一致性、包容性和可读性
     const prompt = `
@@ -92,22 +75,106 @@ Text to analyze:
       }
     );
 
-    //console.log("---------- 1 ------------");
-    //console.log(response.data);
-
     const raw = response.data.choices[0].message?.content?.trim() || "{}";
-
     console.log("---------- 3 ------------");
     console.log(raw);
-    //const parsed = JSON.parse(raw);
-    //return NextResponse.json(raw);
-    return new Response(raw, { status: 200 });
-
-    //return new Response(JSON.stringify(response.data), { status: 200 });
+    return raw;
   } catch (error: any) {
     console.error("Error calling OpenAI:", error);
     return NextResponse.json(
       { message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+const HUGGINGFACE_API_URL =
+  "https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment";
+
+async function analyzeWithHuggingFace(text: string) {
+  const response = await fetch(HUGGINGFACE_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.HF_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ inputs: text }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`HuggingFace error ${response.status}: ${errorText}`);
+  }
+
+  const result = await response.json();
+  console.log("HuggingFace response:", result);
+  return result;
+}
+
+// 调用 OpenAI
+async function analyzeWithOpenAI2(text: string) {
+  console.log("------------------- Calling openai model");
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a brand tone analysis expert." },
+        {
+          role: "user",
+          content: `
+Analyze the following text for tone, inclusivity, and readability.
+Return a JSON like:
+{
+  "scores": {"toneConsistency": number, "inclusivity": number, "readability": number},
+  "summaries": {"toneSummary": string, "inclusivityFeedback": string, "readabilityAdvice": string},
+  "improvedText": string
+}
+
+Text:
+"""${text}"""
+        `,
+        },
+      ],
+      temperature: 0.4,
+    }),
+  });
+
+  const result = await response.json();
+  const content = result.choices?.[0]?.message?.content ?? "{}";
+  return JSON.parse(content);
+}
+
+// 统一入口
+export async function POST(req: Request) {
+  try {
+    const { text, provider = "huggingface" } = await req.json();
+
+    if (!text) {
+      return NextResponse.json({ error: "Missing text" }, { status: 400 });
+    }
+
+    //console.log("------------------- Received text for analysis:", text);
+
+    let result;
+    if (provider === "openai") {
+      result = await analyzeWithOpenAI(text);
+    } else {
+      result = await analyzeWithHuggingFace(text);
+    }
+
+    console.log("------------------- Analysis result:", result);
+
+    //return NextResponse.json(result);
+    return NextResponse.json({ data: result }, { status: 200 });
+  } catch (err: any) {
+    console.error("Analysis error:", err);
+    return NextResponse.json(
+      { error: err.message || "Failed to analyze text" },
       { status: 500 }
     );
   }

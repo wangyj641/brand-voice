@@ -56,10 +56,6 @@ import {
   PolarRadiusAxis,
   Radar,
   Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
 } from "recharts";
 
 const SAMPLE_TEXT = `We are thrilled to announce our latest product update! Our team worked incredibly hard and we're super excited to share it with you. Thanks to all our supporters.`;
@@ -73,14 +69,31 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
 
   async function callAnalyzeAPI(inputText: string) {
+    //const provider = "huggingface"; // or "openai", could be made selectable
+    const provider = "openai"; // or "openai", could be made selectable
+
     try {
       setLoading(true);
       setError(null);
-      // Try calling real backend first
-      //console.log("------------- Calling /api/analyze");
-      const resp = await axios.post("/api/analyze", { text: inputText });
-      console.log("------------- API response:", resp.data);
-      return resp.data;
+
+      const resp = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: inputText,
+          provider: provider, // 可选: openai / huggingface
+        }),
+      });
+
+      // 解析 JSON
+      const json = await resp.json();
+      // 取出 result
+      const data = json.data;
+      //console.log(data);
+      console.log("------------- API response:", data);
+      return data;
     } catch (e) {
       // Fallback: return mocked analysis so the UI still works without backend
       console.warn("Analyze API failed — using mock data", e);
@@ -244,19 +257,19 @@ export default function Dashboard() {
                                   {
                                     name: "Formality",
                                     value: Math.round(
-                                      (result.tone.formality || 0) * 100
+                                      (result.tone?.formality || 0) * 100
                                     ),
                                   },
                                   {
                                     name: "Positivity",
                                     value: Math.round(
-                                      (result.tone.positivity || 0) * 100
+                                      (result.tone?.positivity || 0) * 100
                                     ),
                                   },
                                   {
                                     name: "Confidence",
                                     value: Math.round(
-                                      (result.tone.confidence || 0) * 100
+                                      (result.tone?.confidence || 0) * 100
                                     ),
                                   },
                                 ]
