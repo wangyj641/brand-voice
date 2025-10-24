@@ -1,42 +1,5 @@
 "use client";
 
-/*
-Brand Voice Analyzer - Next.js + React single-file dashboard page
-File name suggestion: pages/dashboard.tsx
-
-What this file contains:
-- A full React/Next.js page component implementing the Dashboard UI
-  (Sidebar, Input card, Result cards, Analysis details, AI rewrite area)
-- Mock API integration with /api/analyze (falls back to mocked data when API unavailable)
-- Uses Tailwind CSS utility classes for styling
-- Uses Recharts for charts (Pie & Radar). If you prefer Chart.js, swap accordingly.
-
-Dependencies (install in your Next.js project):
-  npm install axios recharts
-
-Tailwind setup:
-  This code assumes Tailwind CSS is already configured for your Next.js app.
-  Follow https://tailwindcss.com/docs/guides/nextjs if not configured.
-
-How to use:
-  1. Put this file at `pages/dashboard.tsx` in a Next.js app (TypeScript optional). Rename extension to .tsx.
-  2. Ensure Tailwind is configured and `npm run dev` runs the Next app.
-  3. Optional: implement backend POST /api/analyze to accept { text } and return the shape used in `callAnalyzeAPI`.
-
-Expected /api/analyze response shape (example):
-{
-  sentiment: { label: 'POSITIVE', score: 0.95 },
-  readability: 62.3,
-  tone: { formality: 0.7, confidence: 0.6, positivity: 0.8 },
-  inclusivity: { score: 0.78, issues: [{index:5, text:'guys', suggestion:'team'}] },
-  improved_text: '...'
-}
-
-Notes:
-- The component is intentionally self-contained to serve as a developer-friendly starting point.
-- For production, split into smaller components, add auth, rate limiting, and server-side model calls.
-*/
-
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
 
@@ -400,7 +363,7 @@ export default function Dashboard() {
                 <div className="mt-3">
                   <textarea
                     readOnly
-                    value={result ? result.improved_text : ""}
+                    value={result?.improvedText}
                     rows={8}
                     className="w-full rounded-lg border border-slate-200 p-3 bg-slate-50"
                   />
@@ -408,9 +371,7 @@ export default function Dashboard() {
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={() =>
-                      navigator.clipboard.writeText(
-                        result ? result.improved_text : ""
-                      )
+                      navigator.clipboard.writeText(result?.improvedText)
                     }
                     className="px-3 py-2 rounded-lg border bg-white"
                   >
@@ -420,7 +381,7 @@ export default function Dashboard() {
                     href={
                       result
                         ? `data:text/plain;charset=utf-8,${encodeURIComponent(
-                            result.improved_text
+                            result?.improvedText
                           )}`
                         : "#"
                     }
