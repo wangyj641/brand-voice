@@ -2,14 +2,6 @@
 import { NextResponse } from "next/server";
 import axios from "axios";
 
-import fs from 'fs/promises';
-import path from 'path';
-
-
-import OpenAI from "openai";
-
-
-
 async function analyzeWithOpenAI(text: string) {
   try {
     //const { text } = await req.json();
@@ -45,11 +37,7 @@ Return the result in strict JSON format:
         "score": number,
         "issues": string[],
     },
-    "originalText": string,
-  "improvedText": string,
-   "spanishText": string,
-    "chineseText": string
-
+  "improvedText": string
 }
 
 Text to analyze:
@@ -83,20 +71,13 @@ Text to analyze:
 
     const raw = response.data.choices[0].message?.content?.trim() || "{}";
 
-    let cleaned = raw;
+    // 去掉 Markdown 包裹的 ```json ``` 代码块
+    const cleaned = raw
+      .replace(/^```(json)?/i, "")
+      .replace(/```$/i, "")
+      .trim();
 
-   // 去掉 markdown 代码块符号
-cleaned = cleaned.replace(/^```json\s*/i, "").replace(/^```/, ""); // 去掉开头
-cleaned = cleaned.replace(/```$/i, ""); // 去掉结尾
-
-
-
-    console.log("---------- 3 ------------");
-    const result = JSON.parse(cleaned);
-    console.log("---------- 4 ------------", result.tone.formality);
-
-    //console.log(raw);
-    return result;
+    return cleaned;
   } catch (error: any) {
     console.error("Error calling OpenAI:", error);
     return NextResponse.json(
@@ -106,67 +87,6 @@ cleaned = cleaned.replace(/```$/i, ""); // 去掉结尾
   }
 }
 
-const HUGGINGFACE_API_URL =
-  "https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment";
-
-async function analyzeWithHuggingFace(text: string) {
-  const response = await fetch(HUGGINGFACE_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.HF_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ inputs: text }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`HuggingFace error ${response.status}: ${errorText}`);
-  }
-
-  const result = await response.json();
-  console.log("HuggingFace response:", result);
-  return result;
-}
-
-// 调用 OpenAI
-async function analyzeWithOpenAI2(text: string) {
-  console.log("------------------- Calling openai model");
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: "You are a brand tone analysis expert." },
-        {
-          role: "user",
-          content: `
-Analyze the following text for tone, inclusivity, and readability.
-Return a JSON like:
-{
-  "scores": {"toneConsistency": number, "inclusivity": number, "readability": number},
-  "summaries": {"toneSummary": string, "inclusivityFeedback": string, "readabilityAdvice": string},
-  "improvedText": string
-}
-
-Text:
-"""${text}"""
-        `,
-        },
-      ],
-      temperature: 0.4,
-    }),
-  });
-
-  const result = await response.json();
-  const content = result.choices?.[0]?.message?.content ?? "{}";
-  return JSON.parse(content);
-}
-
 // 统一入口
 export async function POST(req: Request) {
   try {
@@ -174,28 +94,15 @@ export async function POST(req: Request) {
 
     if (!text) {
       return NextResponse.json({ error: "Missing text" }, { status: 400 });
-    } 
-    
-    // 1. 获取文件路径
-    const filePath = path.join(process.cwd(), 'data', 'tim.txt');
-
-    // 2. 读取文件内容
-    const content = await fs.readFile(filePath, 'utf-8');
-
-    //console.log("------------------- Read content from file:", content);
-    //console.log("------------------- Received text for analysis:", text);
+    }
 
     let result;
     if (provider === "openai") {
-      result = await analyzeWithOpenAI(content);
-    } else {
-      result = await analyzeWithHuggingFace(content);
+      result = await analyzeWithOpenAI(text);
     }
 
     console.log("------------------- Analysis result:", result);
-
-   
-     return NextResponse.json({ data: result }, { status: 200 });
+    return NextResponse.json({ data: result }, { status: 200 });
   } catch (err: any) {
     console.error("Analysis error:", err);
     return NextResponse.json(

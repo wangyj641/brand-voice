@@ -38,7 +38,6 @@ Notes:
 */
 
 import React, { useState } from "react";
-import axios from "axios";
 import dynamic from "next/dynamic";
 
 // Recharts is client-side only; dynamic import to avoid SSR issues
@@ -58,9 +57,7 @@ import {
   Tooltip,
 } from "recharts";
 
-//const SAMPLE_TEXT = `We are thrilled to announce our latest product update! Our team worked incredibly hard and we're super excited to share it with you. Thanks to all our supporters.`;
-
-const SAMPLE_TEXT = `https://www.timhortons.ca/tims-for-good`;
+const SAMPLE_TEXT = `We are thrilled to announce our latest product update! Our team worked incredibly hard and we're super excited to share it with you. Thanks to all our supporters.`;
 
 const COLORS = ["#3B82F6", "#60A5FA", "#93C5FD"];
 
@@ -68,9 +65,7 @@ export default function Dashboard() {
   const [text, setText] = useState(SAMPLE_TEXT);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [translate, setTranslate] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
 
   async function callAnalyzeAPI(inputText: string) {
     //const provider = "huggingface"; // or "openai", could be made selectable
@@ -83,7 +78,6 @@ export default function Dashboard() {
       const resp = await fetch("/api/analyze", {
         method: "POST",
         headers: {
-
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -92,17 +86,10 @@ export default function Dashboard() {
         }),
       });
 
-
+      // 解析 JSON
       const json = await resp.json();
-      const data = json.data; // ✅ 现在一定是对象，不是字符串
-
-      console.log("API response data:", data);
-
-      console.log("Improved Text:", data?.chineseText);
-//console.log("Formality:", data?.tone?.formality);
-
-
-      return data;
+      // 取出 result
+      return json.data;
     } catch (e) {
       // Fallback: return mocked analysis so the UI still works without backend
       console.warn("Analyze API failed — using mock data", e);
@@ -121,13 +108,9 @@ export default function Dashboard() {
     }
     setError(null);
     const data = await callAnalyzeAPI(trimmed);
-    //console.log("------------- Final analysis result:", data);
-    //console.log("------------- Formality score:", data.readability);
-    //console.log(data.readability);
-    setResult(data);
-    //setFormality(data.tone.formality);
-    //console.log("------------- Result set in state:", formality);
-
+    console.log("------------- API response:", data);
+    const obj = JSON.parse(data);
+    setResult(obj);
   }
 
   function mockAnalysis(inputText: string) {
@@ -272,19 +255,19 @@ export default function Dashboard() {
                                   {
                                     name: "Formality",
                                     value: Math.round(
-                                      (result.tone?.formality || 0) * 100
+                                      result.tone?.formality || 0
                                     ),
                                   },
                                   {
                                     name: "Positivity",
                                     value: Math.round(
-                                      (result.tone?.positivity || 0) * 100
+                                      result.tone?.positivity || 0
                                     ),
                                   },
                                   {
                                     name: "Confidence",
                                     value: Math.round(
-                                      (result.tone?.confidence || 0) * 100
+                                      result.tone?.confidence || 0
                                     ),
                                   },
                                 ]
@@ -310,11 +293,10 @@ export default function Dashboard() {
                     <div className="text-2xl font-semibold">
                       {result
                         ? `${Math.round(
-                            (((result?.tone?.formality || 0) +
+                            ((result?.tone?.formality || 0) +
                               (result?.tone?.positivity || 0) +
                               (result?.tone?.confidence || 0)) /
-                              3) 
-              
+                              3
                           )}`
                         : "--"}
                     </div>
@@ -332,7 +314,7 @@ export default function Dashboard() {
                 <div className="mt-4">
                   <div className="text-3xl font-semibold">
                     {result
-                      ? `${Math.round((result?.inclusivity?.score || 0))}`
+                      ? `${Math.round(result?.inclusivity?.score || 0)}`
                       : "--"}
                   </div>
                   <div className="mt-2 text-sm text-slate-500">
@@ -343,18 +325,14 @@ export default function Dashboard() {
                       <div
                         style={{
                           width: result
-                            ? `${Math.round(
-                                (result?.inclusivity?.score || 0) 
-                              )}%`
+                            ? `${Math.round(result?.inclusivity?.score || 0)}%`
                             : "0%",
                         }}
                         className="h-3 rounded-full bg-green-400"
                       />
                     </div>
                     <div className="mt-3 text-sm text-slate-500">
-                      {result &&
-                      result.inclusivity?.issues &&
-                      result.inclusivity?.issues?.length > 0
+                      {result?.inclusivity?.issues?.length > 0
                         ? `${result?.inclusivity?.issues?.length} issue(s) found`
                         : "No major issues found"}
                     </div>
@@ -368,7 +346,7 @@ export default function Dashboard() {
                 </h3>
                 <div className="mt-4">
                   <div className="text-3xl font-semibold">
-                    {result ? `${Math.round(result.readability)}` : "--"}
+                    {result ? `${Math.round(result?.readability)}` : "--"}
                   </div>
                   <div className="mt-2 text-sm text-slate-500">
                     Flesch Reading Ease
@@ -392,17 +370,16 @@ export default function Dashboard() {
                 <h3 className="text-lg font-medium">Original Text</h3>
                 <div className="mt-3 p-3 rounded-lg border border-slate-100 bg-slate-50">
                   <pre className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {result?.originalText }
+                    {text}
                   </pre>
                 </div>
 
                 <div className="mt-4">
                   <h4 className="text-sm font-medium">Detected issues</h4>
                   <div className="mt-2 text-sm text-slate-600">
-                    {
-                    result?.inclusivity?.issues?.length > 0 ? (
+                    {result?.inclusivity?.issues?.length > 0 ? (
                       <ul className="list-disc pl-5">
-                        {result.inclusivity.issues.map((it, idx) => (
+                        {result?.inclusivity?.issues?.map((it, idx) => (
                           <li key={idx}>
                             {it.text} — suggestion:{" "}
                             <span className="font-medium">{it.suggestion}</span>
@@ -423,24 +400,16 @@ export default function Dashboard() {
                 <div className="mt-3">
                   <textarea
                     readOnly
-                    value = {translate ? result?.chineseText : result?.improvedText}
+                    value={result ? result.improved_text : ""}
                     rows={8}
                     className="w-full rounded-lg border border-slate-200 p-3 bg-slate-50"
                   />
                 </div>
                 <div className="mt-3 flex gap-2">
                   <button
-                    onClick={() => {setTranslate(!translate);}}
-                    
-                    className="px-3 py-2 rounded-lg border bg-white"
-                  >
-                    Chinese
-                  </button>
-
-                  <button
                     onClick={() =>
                       navigator.clipboard.writeText(
-                        result ? result.improvedText : ""
+                        result ? result.improved_text : ""
                       )
                     }
                     className="px-3 py-2 rounded-lg border bg-white"
@@ -478,19 +447,15 @@ export default function Dashboard() {
                         ? [
                             {
                               subject: "Formality",
-                              A: Math.round((result?.tone?.formality || 0) * 100),
+                              A: Math.round(result?.tone?.formality || 0),
                             },
                             {
                               subject: "Positivity",
-                              A: Math.round(
-                                (result?.tone?.positivity || 0) * 100
-                              ),
+                              A: Math.round(result?.tone?.positivity || 0),
                             },
                             {
                               subject: "Confidence",
-                              A: Math.round(
-                                (result?.tone?.confidence || 0) * 100
-                              ),
+                              A: Math.round(result?.tone?.confidence || 0),
                             },
                           ]
                         : [{ subject: "No data", A: 0 }]
