@@ -46,7 +46,7 @@ Text to analyze:
 
     //console.log("-------------- Prompt sent to OpenAI:", prompt);
     const response = await axios.post(
-      "https://models.inference.ai.azure.com/chat/completions",
+      "https://api-inference.huggingface.co/models/llama-2-7b-chat",
       {
         model: "gpt-4o-mini",
         messages: [
@@ -64,7 +64,7 @@ Text to analyze:
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+          Authorization: `Bearer ${process.env.OPENAI_API_TOKEN}`,
         },
       }
     );
